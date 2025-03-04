@@ -49,8 +49,8 @@ class DQN(nn.Module):
 
     def __init__(self, n_observations, n_actions):
         super(DQN, self).__init__()
-        self.layer1 = nn.Linear(n_observations, 256)
-        self.layer2 = nn.Linear(256, 128)
+        self.layer1 = nn.Linear(n_observations, 128)
+        self.layer2 = nn.Linear(128, 128)
         self.layer3 = nn.Linear(128, n_actions)
 
     def forward(self, x):
@@ -97,14 +97,15 @@ def select_action(state):
     steps_done += 1
     if sample > eps_threshold:
         with torch.no_grad():
+            state_flat = state.view(state.size(0), -1)
             # t.max(1) will return the largest column value of each row.
             # second column on max result is index of where max element was
             # found, so we pick action with the larger expected reward.
-            return policy_net(state).max(1).indices.view(1, 1)
+            return policy_net(state_flat).max(1)[1].view(1, 1)
     else:
         # return a random action as a tensor
         action = random.randint(0, n_actions - 1)
-        return torch.tensor([[action]], device=device, dtype=torch.long)
+        return torch.tensor([[action]], device=device, dtype=torch.long)  # size torch.Size([1, 1])
 
 episode_durations = []
 
@@ -151,11 +152,16 @@ def optimize_model():
     state_batch = torch.cat(batch.state)
     action_batch = torch.cat(batch.action)
     reward_batch = torch.cat(batch.reward)
+    
+    # fix the dimensions of this batch (were 64, 1, 625), now (64, 625)
+    state_batch_flat = state_batch.view(state_batch.size(0), -1)
 
     # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
     # columns of actions taken. These are the actions which would've been taken
     # for each batch state according to policy_net
-    state_action_values = policy_net(state_batch).gather(1, action_batch)
+    # print("state_batch_flat shape: ", state_batch_flat.shape)
+    # print("action_batch shape", action_batch.shape)
+    state_action_values = policy_net(state_batch_flat).gather(1, action_batch)
 
     # Compute V(s_{t+1}) for all next states.
     # Expected values of actions for non_final_next_states are computed based
@@ -164,7 +170,11 @@ def optimize_model():
     # state value or 0 in case the state was final.
     next_state_values = torch.zeros(BATCH_SIZE, device=device)
     with torch.no_grad():
-        next_state_values[non_final_mask] = target_net(non_final_next_states).max(1).values
+        # fix that if it ended early there may be less end states
+        if len(non_final_next_states) > 0:
+            non_final_next_states_flat = non_final_next_states.view(non_final_next_states.size(0), -1)
+            next_state_values[non_final_mask] = target_net(non_final_next_states_flat).max(1)[0]
+    
     # Compute the expected Q values
     expected_state_action_values = (next_state_values * GAMMA) + reward_batch
 
@@ -191,11 +201,12 @@ for i_episode in range(num_episodes):
     snake.reset_env()
     state, _ = snake.get_state()
     state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
+    # print("State shape: ", state.shape)
     for t in count():
         action = select_action(state)
         alive = snake.step(action.item())
         observation, reward = snake.get_state()
-        reward = torch.tensor([reward], device=device)
+        reward = torch.tensor([reward], device=device)  # TODO: add reward for dying LOL
         done = not alive
 
         if done:
@@ -207,7 +218,7 @@ for i_episode in range(num_episodes):
         memory.push(state, action, next_state, reward)
 
         # Move to the next state
-        state = next_state
+        state = next_state if next_state is not None else None
 
         # Perform one step of the optimization (on the policy network)
         optimize_model()

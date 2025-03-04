@@ -59,8 +59,7 @@ class SnakeGame():
                             [7, 5]
                             ]
         # fruit position
-        self.fruit_position = [random.randrange(1, self.grid_size[0]), 
-                        random.randrange(1, self.grid_size[0])]
+        self.fruit_position = [random.randrange(1, self.grid_size[0]), random.randrange(1, self.grid_size[1])]
 
         self.fruit_spawn = True
 
@@ -110,22 +109,22 @@ class SnakeGame():
             self.game_window.blit(game_over_surface, game_over_rect)
             self.pygame.display.flip()
             
-            # after 2 seconds we will quit the program
-            time.sleep(2)
+            # after 0.5 seconds we will quit the program
+            time.sleep(0.5)
             
             # deactivating self.pygame library
-            self.pygame.quit()
+            # self.pygame.quit()
             
             print(f"Game over! Final score: {self.score}")
             # quit the program
-            quit()
+            # quit()
 
         return False
 
     def step(self, command: str | int):
         if isinstance(command, int):
             # convert int command to str
-            print(f"Converting {command} to a string command")
+            # print(f"Converting {command} to a string command")
             command = self.index_move[command]
         self.direction = self.get_new_direction(command)
         # Moving the snake
@@ -199,13 +198,25 @@ class SnakeGame():
         # EMPTY = 0
         # SNAKE = 1
         # SNAKE HEAD = 2
-        # APPLE = -1?
+        # APPLE = -1
         grid = np.zeros(self.grid_size)
         grid[self.fruit_position[0], self.fruit_position[1]] = -1
         for pos in self.snake_body:
-            grid[pos[0], pos[1]] = 1
-        grid[self.snake_body[0][0], self.snake_body[0][1]] += 1
+            # check for if the snake died by crossing the boundaries
+            if pos[0] < 0 or pos[0] >= self.grid_size[0]:
+                continue
+            elif pos[1] < 0 or pos[1] >= self.grid_size[1]:
+                continue
+            else:
+                grid[pos[0], pos[1]] = 1
+        
+        # print("body", self.snake_body[0][0], " ", self.snake_body[0][1])
+        if self.snake_body[0][0] < 0 or self.snake_body[0][0] >= self.grid_size[0] or self.snake_body[0][1] < 0 or self.snake_body[0][1] >= self.grid_size[1]:
+            pass    # again, fix up the head being elsewhere
+        else:
+            grid[self.snake_body[0][0], self.snake_body[0][1]] += 1
         grid = grid.reshape((1,self.grid_size[0]*self.grid_size[1]))
+                
         # RETURN 
         return grid, self.score
 
