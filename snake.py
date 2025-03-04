@@ -50,6 +50,10 @@ class SnakeGame():
 
         # use the reset function to initialize game state
         self.reset_env()
+        
+        # Add episode tracking attributes
+        self.current_episode = 0
+        self.model_episode = 0
 
     def reset_env(self):
         # defining snake default position
@@ -89,16 +93,25 @@ class SnakeGame():
         # creating font object score_font
         self.score_font = self.pygame.font.SysFont(font, size)
         
-        # create the display surface object 
-        # score_surface
+        # create the display surface object for score
         self.score_surface = self.score_font.render('Score : ' + str(self.score), True, color)
         
-        # create a rectangular object for the text
-        # surface object
+        # create a rectangular object for the text surface object
         self.score_rect = self.score_surface.get_rect()
         
-        # displaying text
+        # displaying score text
         self.game_window.blit(self.score_surface, self.score_rect)
+        
+        # create the display surface object for model episode info
+        episode_text = f'Model from Episode: {self.model_episode}'
+        self.episode_surface = self.score_font.render(episode_text, True, color)
+        
+        # create a rectangular object for the episode text
+        self.episode_rect = self.episode_surface.get_rect()
+        self.episode_rect.topright = (self.window_size_x - 10, 10)  # Position in top right corner
+        
+        # displaying episode text
+        self.game_window.blit(self.episode_surface, self.episode_rect)
 
     # game over function
     def game_over(self):
@@ -125,7 +138,7 @@ class SnakeGame():
             # after 0.5 seconds we will quit the program
             time.sleep(0.5)
             
-            print(f"Game over! Final score: {self.score}") 
+            # print(f"Game over! Final score: {self.score}") 
 
     def step(self, command: str | int):
         if isinstance(command, int):

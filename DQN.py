@@ -6,6 +6,9 @@ import matplotlib
 import matplotlib.pyplot as plt
 from collections import namedtuple, deque
 from itertools import count
+import threading
+import time
+import copy
 
 import torch.nn as nn
 import torch.optim as optim
@@ -66,7 +69,7 @@ class DQN(nn.Module):
 # EPS_DECAY controls the rate of exponential decay of epsilon, higher means a slower decay
 # TAU is the update rate of the target network
 # LR is the learning rate of the ``AdamW`` optimizer
-BATCH_SIZE = 128
+BATCH_SIZE = 256
 GAMMA = 0.99
 EPS_START = 0.95
 EPS_END = 0.05
@@ -74,8 +77,9 @@ EPS_DECAY = 1000
 TAU = 0.005
 LR = 1e-3
 
-
-snake = SnakeGame((25,25), cell_size_px=25, display_game=True)
+SNAKE_PIXEL_SIZE = 25
+SNAKE_GRID = (25, 25)
+snake = SnakeGame(SNAKE_GRID, cell_size_px=SNAKE_PIXEL_SIZE, display_game=False)
 # ----- DQN parameters -----
 n_actions = len(snake.index_move) # up, down, left, right
 n_observations = snake.get_state()[0].size
@@ -189,7 +193,56 @@ def optimize_model():
     torch.nn.utils.clip_grad_value_(policy_net.parameters(), 100)
     optimizer.step()
     
+
+vis_thread_running = True
+current_training_episode = 0 
+
+def visualization_thread():
+    # Create a separate instance of the snake game for visualization
+    vis_snake = SnakeGame(SNAKE_GRID, cell_size_px=SNAKE_PIXEL_SIZE, display_game=True)
+    vis_net = copy.deepcopy(policy_net)
     
+    print("Visualization thread started")
+    
+    while vis_thread_running:
+        # Reset the environment
+        vis_snake.reset_env()
+        alive = True
+        
+        # Get the initial state
+        state, _ = vis_snake.get_state()
+        state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
+        
+        # Update to latest model
+        with torch.no_grad():
+            vis_net.load_state_dict(policy_net.state_dict())
+        model_from_episode = current_training_episode
+        vis_snake.model_episode = model_from_episode
+        
+        # Play until the snake dies
+        while alive:
+            # Use the policy network to select an action (no exploration)
+            with torch.no_grad():
+                state_flat = state.view(state.size(0), -1)
+                action = vis_net(state_flat).max(1)[1].view(1, 1)
+            
+            # Take the action
+            alive = vis_snake.step(action.item())
+            
+            # Get the new state
+            if alive:
+                observation, _ = vis_snake.get_state()
+                state = torch.tensor(observation, dtype=torch.float32, device=device).unsqueeze(0)
+                
+            # Check if model has been running too long (stuck in a loop probably)
+            if current_training_episode - model_from_episode > 120:
+                alive = False
+                print("Model has been running too long (120 episodes), updating visualization...")
+
+
+vis_thread = threading.Thread(target=visualization_thread)
+vis_thread.daemon = True  
+vis_thread.start()
     
 if torch.cuda.is_available() or torch.backends.mps.is_available():
     num_episodes = 10000
@@ -197,19 +250,13 @@ else:
     num_episodes = 100
 
 for i_episode in range(num_episodes):
-    
-    # switch to visualize every 200th episode
-    if i_episode % 100 == 0:
-        print("Episode: ", i_episode)
-        snake.display_game = True
-    else:
-        snake.display_game = False
+    current_training_episode = i_episode  # Update the global episode counter
     
     # Initialize the environment and get its state
     snake.reset_env()
     state, _ = snake.get_state()
     state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
-    # print("State shape: ", state.shape)
+    
     for t in count():
         action = select_action(state)
         alive = snake.step(action.item())
@@ -245,6 +292,7 @@ for i_episode in range(num_episodes):
             break
 
 print('Complete')
+vis_thread_running = False
 plot_durations(show_result=True)
 plt.ioff()
 plt.show()
