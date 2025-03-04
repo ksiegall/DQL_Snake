@@ -36,7 +36,7 @@ class SnakeGame():
             # FPS (frames per second) controller
             self.fps = self.pygame.time.Clock()
 
-        self.index_move = ["UP", "DOWN", "LEFT", "RIGHT"]
+        self.index_move = ["UP", "LEFT", "DOWN", "RIGHT"]
 
         self.available_moves = {
             "UP": (0, -1),
@@ -71,6 +71,9 @@ class SnakeGame():
 
         # initial score
         self.score = 0
+
+        self.time = 0
+        self.time_of_last_fruit = 0
 
     # displaying Score function
     def show_score(self, color, font, size):
@@ -121,8 +124,6 @@ class SnakeGame():
             # quit the program
             # quit()
 
-        return False
-
     def step(self, command: str | int):
         if isinstance(command, int):
             # convert int command to str
@@ -140,6 +141,7 @@ class SnakeGame():
         self.snake_body.insert(0, list(self.snake_position))
         if self.snake_position[0] == self.fruit_position[0] and self.snake_position[1] == self.fruit_position[1]:
             self.score += 10
+            self.time_of_last_fruit = self.time
             self.fruit_spawn = False
         else:
             self.snake_body.pop()
@@ -162,22 +164,11 @@ class SnakeGame():
         alive = True
 
         # Game Over conditions
-        if self.snake_position[0] < 0 or self.snake_position[0] >= self.grid_size[0]:
-            alive &= self.game_over()
-            # you crashed into the wall
-            self.score -= 2
-        if self.snake_position[1] < 0 or self.snake_position[1] >= self.grid_size[1]:
-            alive &= self.game_over()
-            # you crashed into the wall
-            self.score -= 2
-
-        # Touching the snake body
-        for block in self.snake_body[1:]:
-            if self.snake_position[0] == block[0] and self.snake_position[1] == block[1]:
-                alive &= self.game_over()
-                
-                # you crashed into yourself
-                self.score -= 2
+        if self.check_death_condition(self.snake_position):
+            alive = False
+            self.game_over()
+            self.score -= 500
+            # you died
 
         if self.display_game:
             # displaying score continuously
@@ -189,7 +180,26 @@ class SnakeGame():
             # Frame Per Second /Refresh Rate
             self.fps.tick(snake_speed)
         
+        self.time += 1
+
         return alive
+    
+    def check_death_condition(self, snake_pos: tuple[int, int]):
+        if snake_pos[0] < 0 or snake_pos[0] >= self.grid_size[0]:
+            # you crashed into the wall
+            return True
+        if snake_pos[1] < 0 or snake_pos[1] >= self.grid_size[1]:
+            # you crashed into the wall
+            return True
+
+        # Touching the snake body
+        for block in self.snake_body[1:]:
+            if self.snake_position[0] == block[0] and self.snake_position[1] == block[1]:                
+                # you crashed into yourself
+                return True
+        
+        # No crash condition
+        return False
 
     def get_new_direction(self, attempted_direction):
         if attempted_direction == 'UP' and self.direction != 'DOWN':
@@ -208,26 +218,51 @@ class SnakeGame():
         # SNAKE = 1
         # SNAKE HEAD = 2
         # APPLE = -1
-        grid = np.zeros(self.grid_size)
-        grid[self.fruit_position[0], self.fruit_position[1]] = -1
-        for pos in self.snake_body:
-            # check for if the snake died by crossing the boundaries
-            if pos[0] < 0 or pos[0] >= self.grid_size[0]:
-                continue
-            elif pos[1] < 0 or pos[1] >= self.grid_size[1]:
-                continue
-            else:
-                grid[pos[0], pos[1]] = 1
+
+
+        #                      STRAIGHT                TURN LEFT (CCW)                                         TURN RIGHT (CW)
+        death_test_dirs = [self.direction, 
+                           self.index_move[(self.index_move.index(self.direction)+1) % len(self.index_move)], 
+                           self.index_move[self.index_move.index(self.direction)-1]]
+        death_test_results = []
+
+        for direction in death_test_dirs:
+            motion = self.available_moves[direction]
+            new_x = self.snake_position[0] + motion[0]
+            new_y = self.snake_position[1] + motion[1]
+            death_test_results.append(self.check_death_condition((new_x, new_y)))
+
+        # One-hot representation of snake current direction
+        cur_direction = [direction == self.direction for direction in self.index_move]
         
-        # print("body", self.snake_body[0][0], " ", self.snake_body[0][1])
-        if self.snake_body[0][0] < 0 or self.snake_body[0][0] >= self.grid_size[0] or self.snake_body[0][1] < 0 or self.snake_body[0][1] >= self.grid_size[1]:
-            pass    # again, fix up the head being elsewhere
-        else:
-            grid[self.snake_body[0][0], self.snake_body[0][1]] += 1
-        grid = grid.reshape((1,self.grid_size[0]*self.grid_size[1]))
+        direction_to_apple = self.fruit_position[0] - self.snake_position[0], self.fruit_position[1] - self.snake_position[1]
+                        #       UP                          DOWN                              LEFT                              RIGHT
+        apple_dir = [max(-direction_to_apple[1],0), max(-direction_to_apple[0],0), max(direction_to_apple[1],0), max(direction_to_apple[0],0)]
+
+        features = np.hstack((death_test_results, cur_direction, apple_dir), dtype=int)
+        
+        # grid = np.zeros(self.grid_size)
+        # grid[self.fruit_position[0], self.fruit_position[1]] = -1
+        # for pos in self.snake_body:
+        #     # check for if the snake died by crossing the boundaries
+        #     if pos[0] < 0 or pos[0] >= self.grid_size[0]:
+        #         continue
+        #     elif pos[1] < 0 or pos[1] >= self.grid_size[1]:
+        #         continue
+        #     else:
+        #         grid[pos[0], pos[1]] = 1
+        
+        # # print("body", self.snake_body[0][0], " ", self.snake_body[0][1])
+        # if self.snake_body[0][0] < 0 or self.snake_body[0][0] >= self.grid_size[0] or self.snake_body[0][1] < 0 or self.snake_body[0][1] >= self.grid_size[1]:
+        #     pass    # again, fix up the head being elsewhere
+        # else:
+        #     grid[self.snake_body[0][0], self.snake_body[0][1]] += 1
+        # grid = grid.reshape((1,self.grid_size[0]*self.grid_size[1]))
                 
-        # RETURN 
-        return grid, self.score
+
+        time_weight = 0.5
+        # RETURN features + score, add punishment for not collecting apple
+        return features, self.score - time_weight*(self.time - self.time_of_last_fruit)
 
 
 def main():
