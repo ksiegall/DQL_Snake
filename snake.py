@@ -2,6 +2,7 @@
 import time
 import random
 import numpy as np
+import math
 
 snake_speed = 15
 
@@ -56,37 +57,31 @@ class SnakeGame():
         self.model_episode = 0
 
     def reset_env(self):
-        # defining snake default position
-        self.snake_position = [10, 5]
 
+        # setting default snake direction towards
+        self.direction = random.choice(self.index_move)  # Choose a random direction from the list, excluding "LEFT"
+        dir_of_motion = self.available_moves[self.direction]
+        # defining snake default position
+        self.snake_position = [10, 10]
+        snake_len = 4 + int(random.random() > 0.5) + int(random.random() > 0.5)
         # defining first 4 blocks of snake body
-        self.snake_body = [[10, 5],
-                            [9, 5],
-                            [8, 5],
-                            [7, 5]
-                            ]
-        
-        # with a 50/50 chance add another link
-        if random.random() > 0.5:
-            self.snake_body.append([6, 5])
-            if random.random() > 0.5:
-                self.snake_body.append([5, 5])
+        self.snake_body = [tuple(self.snake_position)]
+        for i in range(snake_len-1):
+            self.snake_body.append((self.snake_position[0]-(i+1)*dir_of_motion[0], self.snake_position[1]-(i+1)*dir_of_motion[1]))
         
         # fruit position
         # make the initial fruit position close to the snake
-        self.fruit_position = [random.randrange(self.snake_position[0], self.snake_position[0] + 5), random.randrange(self.snake_position[1] - 3, self.snake_position[1] + 3)]
+        self.fruit_position = (random.randrange(self.snake_position[0], self.snake_position[0] + 5), random.randrange(self.snake_position[1] - 3, self.snake_position[1] + 3))
         # self.fruit_position = [random.randrange(1, self.grid_size[0]), random.randrange(1, self.grid_size[1])]
-
         self.fruit_spawn = True
-
-        # setting default snake direction towards
-        self.direction = random.choice(self.index_move[1:])  # Choose a random direction from the list, excluding "LEFT"
 
         # initial score
         self.score = 0
 
-        self.time = 0
-        self.time_of_last_fruit = 0
+        self.time = 1
+        self.time_of_last_fruit = self.time
+
+        self.alive = True
 
     # displaying Score function
     def show_score(self, color, font, size):
@@ -138,7 +133,7 @@ class SnakeGame():
             # after 0.5 seconds we will quit the program
             time.sleep(0.5)
             
-            # print(f"Game over! Final score: {self.score}") 
+        print(f"Game over! Final score: {self.score}") 
 
     def step(self, command: str | int):
         if isinstance(command, int):
@@ -151,11 +146,10 @@ class SnakeGame():
         motion = self.available_moves[self.direction]
         self.snake_position[0] += motion[0]
         self.snake_position[1] += motion[1]
-
         # Snake body growing mechanism
         # if fruits and snakes collide then scores
         # will be incremented by 10
-        self.snake_body.insert(0, list(self.snake_position))
+        self.snake_body.insert(0, tuple(self.snake_position))
         if self.snake_position[0] == self.fruit_position[0] and self.snake_position[1] == self.fruit_position[1]:
             self.score += self.FRUIT_SCORE_VAL
             self.time_of_last_fruit = self.time
@@ -178,11 +172,11 @@ class SnakeGame():
             self.pygame.draw.rect(self.game_window, self.white, self.pygame.Rect(
                 self.fruit_position[0]*self.cell_size_px, self.fruit_position[1]*self.cell_size_px, self.cell_size_px, self.cell_size_px))
 
-        alive = True
+        self.alive = True
 
         # Game Over conditions
         if self.check_death_condition(self.snake_position):
-            alive = False
+            self.alive = False
             self.game_over()
             self.score -= self.DEATH_SCORE_VAL
             # you died
@@ -199,7 +193,7 @@ class SnakeGame():
         
         self.time += 1
 
-        return alive
+        return self.alive
     
     def check_death_condition(self, snake_pos: tuple[int, int]):
         if snake_pos[0] < 0 or snake_pos[0] >= self.grid_size[0]:
@@ -211,7 +205,7 @@ class SnakeGame():
 
         # Touching the snake body
         for block in self.snake_body[1:]:
-            if self.snake_position[0] == block[0] and self.snake_position[1] == block[1]:                
+            if self.snake_position[0] == block[0] and self.snake_position[1] == block[1]:   
                 # you crashed into yourself
                 return True
         
@@ -297,9 +291,15 @@ class SnakeGame():
         # grid = grid.reshape((1,self.grid_size[0]*self.grid_size[1]))
                 
         # --- REWARDS ---
-        time_weight = 0.1
+        time_weight = 0.25
         # RETURN features, score + add punishment for not collecting apple
-        reward = self.score - time_weight*(self.time - self.time_of_last_fruit)
+        reward = math.log(self.time) - time_weight*(self.time - self.time_of_last_fruit)
+
+        if self.time - self.time_of_last_fruit == 1:
+            reward += 10
+
+        if not self.alive:
+            reward -= 25
         
         # reward it a tiny bit for getting closer to the apple or not
         # it will be either +1, 0, or -1 in direction divided by distance (so the closer we are the more does this reward actually matter)
@@ -342,7 +342,10 @@ def main():
                 if event.key == pygame.K_RIGHT:
                     command = 'RIGHT'
                     
-        game.step(command)
+        alive = game.step(command)
+
+        if not alive:
+            break
     
 if __name__ == "__main__":
     main()
