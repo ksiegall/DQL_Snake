@@ -56,8 +56,13 @@ class SnakeGame():
         self.model_episode = 0
 
     def reset_env(self):
+        # setting default snake direction towards
+        self.direction = random.choice(self.index_move)
+        
+        
         # defining snake default position
         self.snake_position = [10, 5]
+        
 
         # defining first 4 blocks of snake body
         self.snake_body = [[10, 5],
@@ -72,6 +77,12 @@ class SnakeGame():
             if random.random() > 0.5:
                 self.snake_body.append([5, 5])
         
+        # mirror the body if necessary
+        if self.direction == "LEFT":
+            for i in range(1, len(self.snake_body)):
+                self.snake_body[i][0] += 2*i            
+            
+            
         # fruit position
         # make the initial fruit position close to the snake
         self.fruit_position = [random.randrange(self.snake_position[0], self.snake_position[0] + 5), random.randrange(self.snake_position[1] - 3, self.snake_position[1] + 3)]
@@ -79,8 +90,6 @@ class SnakeGame():
 
         self.fruit_spawn = True
 
-        # setting default snake direction towards
-        self.direction = random.choice(self.index_move[1:])  # Choose a random direction from the list, excluding "LEFT"
 
         # initial score
         self.score = 0
