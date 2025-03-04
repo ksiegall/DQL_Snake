@@ -145,8 +145,8 @@ class SnakeGame():
             self.snake_body.pop()
             
         if not self.fruit_spawn:
-            self.fruit_position = [random.randrange(1, self.grid_size[0]), 
-                            random.randrange(1, self.grid_size[1])]
+            self.fruit_position = [random.randrange(0, self.grid_size[0]), 
+                            random.randrange(0, self.grid_size[1])]
             
         self.fruit_spawn = True
 
@@ -164,13 +164,20 @@ class SnakeGame():
         # Game Over conditions
         if self.snake_position[0] < 0 or self.snake_position[0] >= self.grid_size[0]:
             alive &= self.game_over()
+            # you crashed into the wall
+            self.score -= 2
         if self.snake_position[1] < 0 or self.snake_position[1] >= self.grid_size[1]:
             alive &= self.game_over()
+            # you crashed into the wall
+            self.score -= 2
 
         # Touching the snake body
         for block in self.snake_body[1:]:
             if self.snake_position[0] == block[0] and self.snake_position[1] == block[1]:
                 alive &= self.game_over()
+                
+                # you crashed into yourself
+                self.score -= 2
 
         if self.display_game:
             # displaying score continuously
