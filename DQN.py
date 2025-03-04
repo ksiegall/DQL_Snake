@@ -72,10 +72,10 @@ EPS_START = 0.9
 EPS_END = 0.05
 EPS_DECAY = 1000
 TAU = 0.005
-LR = 1e-4
+LR = 1e-3
 
 
-snake = SnakeGame((25,25), cell_size_px=25, display_game=False)
+snake = SnakeGame((25,25), cell_size_px=25, display_game=True)
 # ----- DQN parameters -----
 n_actions = len(snake.index_move) # up, down, left, right
 n_observations = snake.get_state()[0].size
@@ -192,11 +192,19 @@ def optimize_model():
     
     
 if torch.cuda.is_available() or torch.backends.mps.is_available():
-    num_episodes = 600
+    num_episodes = 1000
 else:
-    num_episodes = 50
+    num_episodes = 100
 
 for i_episode in range(num_episodes):
+    
+    # switch to visualize every 200th episode
+    if i_episode % 100 == 0:
+        print("Episode: ", i_episode)
+        snake.display_game = True
+    else:
+        snake.display_game = False
+    
     # Initialize the environment and get its state
     snake.reset_env()
     state, _ = snake.get_state()

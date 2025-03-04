@@ -59,7 +59,9 @@ class SnakeGame():
                             [7, 5]
                             ]
         # fruit position
-        self.fruit_position = [random.randrange(1, self.grid_size[0]), random.randrange(1, self.grid_size[1])]
+        # make the initial fruit position close to the snake
+        self.fruit_position = [random.randrange(self.snake_position[0], self.snake_position[0] + 5), random.randrange(self.snake_position[1] - 3, self.snake_position[1] + 3)]
+        # self.fruit_position = [random.randrange(1, self.grid_size[0]), random.randrange(1, self.grid_size[1])]
 
         self.fruit_spawn = True
 
