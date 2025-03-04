@@ -46,7 +46,7 @@ class SnakeGame():
         }
 
         self.FRUIT_SCORE_VAL = 10
-        self.DEATH_SCORE_VAL = 10
+        self.DEATH_SCORE_VAL = 25
 
         # use the reset function to initialize game state
         self.reset_env()
@@ -80,8 +80,7 @@ class SnakeGame():
         self.fruit_spawn = True
 
         # setting default snake direction towards
-        # right
-        self.direction = 'RIGHT'
+        self.direction = random.choice(self.index_move[1:])  # Choose a random direction from the list, excluding "LEFT"
 
         # initial score
         self.score = 0
