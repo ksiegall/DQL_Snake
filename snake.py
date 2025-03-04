@@ -46,7 +46,7 @@ class SnakeGame():
         }
 
         self.FRUIT_SCORE_VAL = 10
-        self.DEATH_SCORE_VAL = 25
+        self.DEATH_SCORE_VAL = 10
 
         # use the reset function to initialize game state
         self.reset_env()
@@ -69,6 +69,8 @@ class SnakeGame():
         # with a 50/50 chance add another link
         if random.random() > 0.5:
             self.snake_body.append([6, 5])
+            if random.random() > 0.5:
+                self.snake_body.append([5, 5])
         
         # fruit position
         # make the initial fruit position close to the snake
@@ -113,7 +115,6 @@ class SnakeGame():
         # displaying episode text
         self.game_window.blit(self.episode_surface, self.episode_rect)
 
-    # game over function
     def game_over(self):
         
         if self.display_game:
@@ -273,8 +274,9 @@ class SnakeGame():
         # if the apple is to the RIGHT of the current snake position
         apple_dir[3] = 1 if direction_to_apple[0] > 0 else 0
         
+        body_length_norm = len(self.snake_body) / (self.grid_size[0] * self.grid_size[1])
 
-        features = np.hstack((death_test_results, cur_direction, apple_dir))
+        features = np.hstack((death_test_results, cur_direction, apple_dir, body_length_norm))
         
         # # --- make the entire grid a feature ---
         # grid = np.zeros(self.grid_size)

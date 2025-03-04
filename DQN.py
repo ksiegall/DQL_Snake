@@ -235,9 +235,9 @@ def visualization_thread():
                 state = torch.tensor(observation, dtype=torch.float32, device=device).unsqueeze(0)
                 
             # Check if model has been running too long (stuck in a loop probably)
-            if current_training_episode - model_from_episode > 120:
+            if current_training_episode - model_from_episode > 50:
                 alive = False
-                print("Model has been running too long (120 episodes), updating visualization...")
+                print("Model has been running too long (50 episodes), updating visualization...")
 
 
 vis_thread = threading.Thread(target=visualization_thread)
