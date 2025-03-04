@@ -9,7 +9,12 @@ The model was given: actions, the game board, (**ADD LATER**). The actions that 
 
 ## Methods
 
+**Initial Model**: We just converted the model given in the tutorial from [Paszke and Towers](https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html). The reward was just the score of the game.
+
+
+
 ## Table of Results
+**Initial Model**: Kinda shit
 
 ## Conclusions
 
