@@ -45,6 +45,9 @@ class SnakeGame():
             "RIGHT": (1, 0),
         }
 
+        self.FRUIT_SCORE_VAL = 100
+        self.DEATH_SCORE_VAL = 250
+
         # use the reset function to initialize game state
         self.reset_env()
 
@@ -140,7 +143,7 @@ class SnakeGame():
         # will be incremented by 10
         self.snake_body.insert(0, list(self.snake_position))
         if self.snake_position[0] == self.fruit_position[0] and self.snake_position[1] == self.fruit_position[1]:
-            self.score += 10
+            self.score += self.FRUIT_SCORE_VAL
             self.time_of_last_fruit = self.time
             self.fruit_spawn = False
         else:
@@ -167,7 +170,7 @@ class SnakeGame():
         if self.check_death_condition(self.snake_position):
             alive = False
             self.game_over()
-            self.score -= 500
+            self.score -= self.DEATH_SCORE_VAL
             # you died
 
         if self.display_game:
@@ -236,10 +239,15 @@ class SnakeGame():
         cur_direction = [direction == self.direction for direction in self.index_move]
         
         direction_to_apple = self.fruit_position[0] - self.snake_position[0], self.fruit_position[1] - self.snake_position[1]
-                        #       UP                          DOWN                              LEFT                              RIGHT
-        apple_dir = [max(-direction_to_apple[1],0), max(-direction_to_apple[0],0), max(direction_to_apple[1],0), max(direction_to_apple[0],0)]
 
-        features = np.hstack((death_test_results, cur_direction, apple_dir), dtype=int)
+        dist_to_apple = abs(direction_to_apple[0]) + abs(direction_to_apple[1])+1
+        
+        apple_dir = [max(-direction_to_apple[1]/dist_to_apple,0), # UP
+                     max(-direction_to_apple[0]/dist_to_apple,0), # LEFT
+                     max(direction_to_apple[1]/dist_to_apple,0),  # DOWN
+                     max(direction_to_apple[0]/dist_to_apple,0)]  # RIGHT
+
+        features = np.hstack((death_test_results, cur_direction, apple_dir))
         
         # grid = np.zeros(self.grid_size)
         # grid[self.fruit_position[0], self.fruit_position[1]] = -1
@@ -260,7 +268,7 @@ class SnakeGame():
         # grid = grid.reshape((1,self.grid_size[0]*self.grid_size[1]))
                 
 
-        time_weight = 0.5
+        time_weight = 1
         # RETURN features + score, add punishment for not collecting apple
         return features, self.score - time_weight*(self.time - self.time_of_last_fruit)
 
