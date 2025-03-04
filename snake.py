@@ -45,8 +45,8 @@ class SnakeGame():
             "RIGHT": (1, 0),
         }
 
-        self.FRUIT_SCORE_VAL = 100
-        self.DEATH_SCORE_VAL = 250
+        self.FRUIT_SCORE_VAL = 10
+        self.DEATH_SCORE_VAL = 25
 
         # use the reset function to initialize game state
         self.reset_env()
@@ -61,6 +61,11 @@ class SnakeGame():
                             [8, 5],
                             [7, 5]
                             ]
+        
+        # with a 50/50 chance add another link
+        if random.random() > 0.5:
+            self.snake_body.append([6, 5])
+        
         # fruit position
         # make the initial fruit position close to the snake
         self.fruit_position = [random.randrange(self.snake_position[0], self.snake_position[0] + 5), random.randrange(self.snake_position[1] - 3, self.snake_position[1] + 3)]
@@ -120,12 +125,7 @@ class SnakeGame():
             # after 0.5 seconds we will quit the program
             time.sleep(0.5)
             
-            # deactivating self.pygame library
-            # self.pygame.quit()
-            
-            print(f"Game over! Final score: {self.score}")
-            # quit the program
-            # quit()
+            print(f"Game over! Final score: {self.score}") 
 
     def step(self, command: str | int):
         if isinstance(command, int):
@@ -133,6 +133,7 @@ class SnakeGame():
             # print(f"Converting {command} to a string command")
             command = self.index_move[command]
         self.direction = self.get_new_direction(command)
+        
         # Moving the snake
         motion = self.available_moves[self.direction]
         self.snake_position[0] += motion[0]
@@ -222,11 +223,10 @@ class SnakeGame():
         # SNAKE HEAD = 2
         # APPLE = -1
 
+        # --- FEATURES ---
 
         #                      STRAIGHT                TURN LEFT (CCW)                                         TURN RIGHT (CW)
-        death_test_dirs = [self.direction, 
-                           self.index_move[(self.index_move.index(self.direction)+1) % len(self.index_move)], 
-                           self.index_move[self.index_move.index(self.direction)-1]]
+        death_test_dirs = [self.direction, self.index_move[(self.index_move.index(self.direction)+1) % len(self.index_move)], self.index_move[self.index_move.index(self.direction)-1]]
         death_test_results = []
 
         for direction in death_test_dirs:
@@ -238,17 +238,32 @@ class SnakeGame():
         # One-hot representation of snake current direction
         cur_direction = [direction == self.direction for direction in self.index_move]
         
+#TODO: !!! THIS DIRECTION also SCALES with the distance???
         direction_to_apple = self.fruit_position[0] - self.snake_position[0], self.fruit_position[1] - self.snake_position[1]
 
         dist_to_apple = abs(direction_to_apple[0]) + abs(direction_to_apple[1])+1
         
-        apple_dir = [max(-direction_to_apple[1]/dist_to_apple,0), # UP
-                     max(-direction_to_apple[0]/dist_to_apple,0), # LEFT
-                     max(direction_to_apple[1]/dist_to_apple,0),  # DOWN
-                     max(direction_to_apple[0]/dist_to_apple,0)]  # RIGHT
+        # apple_dir = [max(-direction_to_apple[1]/dist_to_apple,0), # UP
+        #              max(-direction_to_apple[0]/dist_to_apple,0), # LEFT
+        #              max(direction_to_apple[1]/dist_to_apple,0),  # DOWN
+        #              max(direction_to_apple[0]/dist_to_apple,0)]  # RIGHT
+        
+        # one hot representation of the direction to the apple in X and Y w.r.t. to the snake current direction
+        apple_dir = [0, 0, 0, 0]
+        
+        # if the apple is to the UP of the current snake position    
+        apple_dir[0] = 1 if direction_to_apple[1] > 0 else 0
+        # if the apple is to the LEFT of the current snake position
+        apple_dir[1] = 1 if direction_to_apple[0] < 0 else 0
+        # if the apple is to the DOWN of the current snake position
+        apple_dir[2] = 1 if direction_to_apple[1] < 0 else 0
+        # if the apple is to the RIGHT of the current snake position
+        apple_dir[3] = 1 if direction_to_apple[0] > 0 else 0
+        
 
         features = np.hstack((death_test_results, cur_direction, apple_dir))
         
+        # # --- make the entire grid a feature ---
         # grid = np.zeros(self.grid_size)
         # grid[self.fruit_position[0], self.fruit_position[1]] = -1
         # for pos in self.snake_body:
@@ -267,10 +282,30 @@ class SnakeGame():
         #     grid[self.snake_body[0][0], self.snake_body[0][1]] += 1
         # grid = grid.reshape((1,self.grid_size[0]*self.grid_size[1]))
                 
-
-        time_weight = 1
-        # RETURN features + score, add punishment for not collecting apple
-        return features, self.score - time_weight*(self.time - self.time_of_last_fruit)
+        # --- REWARDS ---
+        time_weight = 0.1
+        # RETURN features, score + add punishment for not collecting apple
+        reward = self.score - time_weight*(self.time - self.time_of_last_fruit)
+        
+        # reward it a tiny bit for getting closer to the apple or not
+        # it will be either +1, 0, or -1 in direction divided by distance (so the closer we are the more does this reward actually matter)
+        direction_to_apple = self.fruit_position[0] - self.snake_position[0], self.fruit_position[1] - self.snake_position[1]
+        # make it be the difference invariant of the direction the snake is facing
+        #   with +X being forward, and +Y being right relative to snake motion
+        if self.direction == "UP":
+            direction_to_apple = direction_to_apple[1], direction_to_apple[0]
+        elif self.direction == "LEFT":
+            direction_to_apple = -direction_to_apple[0], direction_to_apple[1]
+        elif self.direction == "DOWN":
+            direction_to_apple = -direction_to_apple[1], -direction_to_apple[0]
+        elif self.direction == "RIGHT":
+            direction_to_apple = direction_to_apple[0], -direction_to_apple[1]
+        
+        # use the sign of them to see if we are heading towards an apple, or away from it in X and Y
+        reward += np.sign(direction_to_apple[0]) / (dist_to_apple + 1)
+        reward += np.sign(direction_to_apple[1]) / (dist_to_apple + 1)
+        
+        return features, reward
 
 
 def main():
