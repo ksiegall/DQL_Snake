@@ -11,10 +11,24 @@ The model was given: actions, the game board, (**ADD LATER**). The actions that 
 
 **Initial Model**: We just converted the model given in the tutorial from [Paszke and Towers](https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html). The reward was just the score of the game.
 
+**Visualize the Game**: Now run a visual representation of the model's current skill while it's still training, so you can always see a game running.
+
+**Cost of Living**: Added cost of living penalty to reward (so snake won't just go in circles forever). It commits suicide sometimes.
+
+**Changed State Information**: Instead of sending the entire grid, we now send information about what directions would immediately lead to death, the direction of the apple, the current direction of the snake, and the snake's body length (normalized). Reward is now based on distance from apple.
+
+**Reward Change, Changed Snake Spawn Code**: Snake can now spawn in any orientation. Reward tweaked so snake is rewarded for staying alive, but the longer the game goes on the more it is penalized for taking awhile to find the apple.
+
 
 
 ## Table of Results
 **Initial Model**: Kinda shit
+
+**Cost of Living**: Commits suicide sometimes.
+
+**Changed State Info**: Hey it kinda works. Snake sometimes wiggles in the corner in circles.
+
+**Reward, Snake Spawn Change**: currently broken, we're fixing this rn
 
 ## Conclusions
 
