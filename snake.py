@@ -47,7 +47,7 @@ class SnakeGame():
         }
 
         self.FRUIT_SCORE_VAL = 10
-        self.DEATH_SCORE_VAL = 25
+        self.DEATH_SCORE_VAL = 0
 
         # use the reset function to initialize game state
         self.reset_env()
@@ -136,7 +136,7 @@ class SnakeGame():
             # after 0.5 seconds we will quit the program
             time.sleep(0.5)
             
-        print(f"Game over! Final score: {self.score}") 
+            # print(f"Game over! Final score: {self.score}") 
 
     def step(self, command: str | int):
         if isinstance(command, int):
@@ -161,9 +161,10 @@ class SnakeGame():
             self.snake_body.pop()
             
         if not self.fruit_spawn:
-            while self.fruit_position in self.snake_body:
-                self.fruit_position = [random.randrange(0, self.grid_size[0]), 
-                                random.randrange(0, self.grid_size[1])]
+
+            # while self.fruit_position in self.snake_body:
+            self.fruit_position = [random.randrange(0, self.grid_size[0]), 
+                            random.randrange(0, self.grid_size[1])]
             self.fruit_spawn = True
 
         if self.display_game:
