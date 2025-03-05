@@ -71,7 +71,10 @@ class SnakeGame():
         
         # fruit position
         # make the initial fruit position close to the snake
-        self.fruit_position = (random.randrange(self.snake_position[0], self.snake_position[0] + 5), random.randrange(self.snake_position[1] - 3, self.snake_position[1] + 3))
+        self.fruit_position = tuple(self.snake_position)
+        while self.fruit_position in self.snake_body:
+            self.fruit_position = (random.randrange(self.snake_position[0] - 3, self.snake_position[0] + 3), 
+                                   random.randrange(self.snake_position[1] - 3, self.snake_position[1] + 3))
         # self.fruit_position = [random.randrange(1, self.grid_size[0]), random.randrange(1, self.grid_size[1])]
         self.fruit_spawn = True
 
@@ -158,10 +161,10 @@ class SnakeGame():
             self.snake_body.pop()
             
         if not self.fruit_spawn:
-            self.fruit_position = [random.randrange(0, self.grid_size[0]), 
-                            random.randrange(0, self.grid_size[1])]
-            
-        self.fruit_spawn = True
+            while self.fruit_position in self.snake_body:
+                self.fruit_position = [random.randrange(0, self.grid_size[0]), 
+                                random.randrange(0, self.grid_size[1])]
+            self.fruit_spawn = True
 
         if self.display_game:
             self.game_window.fill(self.black)
@@ -193,7 +196,7 @@ class SnakeGame():
         
         self.time += 1
 
-        return self.alive
+        return self.alive, self.score
     
     def check_death_condition(self, snake_pos: tuple[int, int]):
         if snake_pos[0] < 0 or snake_pos[0] >= self.grid_size[0]:
@@ -291,7 +294,7 @@ class SnakeGame():
         # grid = grid.reshape((1,self.grid_size[0]*self.grid_size[1]))
                 
         # --- REWARDS ---
-        time_weight = 0.25
+        time_weight = 0.1
         # RETURN features, score + add punishment for not collecting apple
         reward = math.log(self.time) - time_weight*(self.time - self.time_of_last_fruit)
 
@@ -307,17 +310,17 @@ class SnakeGame():
         # make it be the difference invariant of the direction the snake is facing
         #   with +X being forward, and +Y being right relative to snake motion
         if self.direction == "UP":
-            direction_to_apple = direction_to_apple[1], direction_to_apple[0]
+            reward -= min(direction_to_apple[1]/(dist_to_apple + 1), 0)
         elif self.direction == "LEFT":
-            direction_to_apple = -direction_to_apple[0], direction_to_apple[1]
+            reward -= min(direction_to_apple[0]/(dist_to_apple + 1), 0)
         elif self.direction == "DOWN":
-            direction_to_apple = -direction_to_apple[1], -direction_to_apple[0]
+            reward += max(direction_to_apple[1]/(dist_to_apple + 1), 0)
         elif self.direction == "RIGHT":
-            direction_to_apple = direction_to_apple[0], -direction_to_apple[1]
+            reward += max(direction_to_apple[0]/(dist_to_apple + 1), 0)
         
-        # use the sign of them to see if we are heading towards an apple, or away from it in X and Y
-        reward += np.sign(direction_to_apple[0]) / (dist_to_apple + 1)
-        reward += np.sign(direction_to_apple[1]) / (dist_to_apple + 1)
+        # # use the sign of them to see if we are heading towards an apple, or away from it in X and Y
+        # reward += np.sign(direction_to_apple[0]) / (dist_to_apple + 1)
+        # reward += np.sign(direction_to_apple[1]) / (dist_to_apple + 1)
         
         return features, reward
 
@@ -342,7 +345,7 @@ def main():
                 if event.key == pygame.K_RIGHT:
                     command = 'RIGHT'
                     
-        alive = game.step(command)
+        alive, _ = game.step(command)
 
         if not alive:
             break

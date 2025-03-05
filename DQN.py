@@ -114,32 +114,43 @@ def select_action(state):
         return torch.tensor([[action]], device=device, dtype=torch.long)  # size torch.Size([1, 1])
 
 episode_durations = []
+scores = []
 
+fig, axes = plt.subplots(1, 2)
 
 def plot_durations(show_result=False):
-    plt.figure(1)
     durations_t = torch.tensor(episode_durations, dtype=torch.float)
     if show_result:
-        plt.title('Result')
+        axes[0].set_title('Result')
+        axes[1].set_title('Scores - Result')
     else:
-        plt.clf()
-        plt.title('Training...')
-    plt.xlabel('Episode')
-    plt.ylabel('Duration')
-    plt.plot(durations_t.numpy())
+        axes[0].cla()
+        axes[1].cla()
+        # fig, axes = plt.subplots(1, 2)
+        axes[0].set_title('Training...')
+        axes[1].set_title('Scores - Training...')
+    axes[0].set_xlabel('Episode')
+    axes[0].set_ylabel('Duration')
+    axes[0].plot(durations_t.numpy(), color="blue")
     # Take 100 episode averages and plot them too
     if len(durations_t) >= 100:
         means = durations_t.unfold(0, 100, 1).mean(1).view(-1)
         means = torch.cat((torch.zeros(99), means))
-        plt.plot(means.numpy())
+        axes[0].plot(means.numpy(), color="orange")
 
+    scores_t = torch.tensor(scores, dtype=torch.float)
+    axes[1].set_xlabel('Episode')
+    axes[1].set_ylabel('Score')
+    axes[1].plot(scores_t.numpy(), color="blue")
+
+    # Take 100 episode averages and plot them too
+    if len(scores_t) >= 100:
+        score_means = scores_t.unfold(0, 100, 1).mean(1).view(-1)
+        score_means = torch.cat((torch.zeros(99), score_means))
+        axes[1].plot(score_means.numpy(), color="orange")
+
+    fig.tight_layout()
     plt.pause(0.001)  # pause a bit so that plots are updated
-    if is_ipython:
-        if not show_result:
-            display.display(plt.gcf())
-            display.clear_output(wait=True)
-        else:
-            display.display(plt.gcf())
             
             
 def optimize_model():
@@ -229,7 +240,7 @@ def visualization_thread():
                 action = vis_net(state_flat).max(1)[1].view(1, 1)
             
             # Take the action
-            alive = vis_snake.step(action.item())
+            alive, _ = vis_snake.step(action.item())
             
             # Get the new state
             if alive:
@@ -245,7 +256,8 @@ def visualization_thread():
 vis_thread = threading.Thread(target=visualization_thread)
 vis_thread.daemon = True  
 vis_thread.start()
-    
+
+checkpoint_interval = 250
 if torch.cuda.is_available() or torch.backends.mps.is_available():
     num_episodes = 10000
 else:
@@ -261,7 +273,7 @@ for i_episode in range(num_episodes):
     
     for t in count():
         action = select_action(state)
-        alive = snake.step(action.item())
+        alive, score = snake.step(action.item())
         observation, reward = snake.get_state()
         reward = torch.tensor([reward], device=device)  # TODO: add reward for dying LOL
         done = not alive
@@ -290,7 +302,10 @@ for i_episode in range(num_episodes):
 
         if done:
             episode_durations.append(t + 1)
+            scores.append(score)
             plot_durations()
+            if i_episode % checkpoint_interval == 0:
+                torch.save(policy_net.state_dict(), f"dql_snake_episode_{i_episode}.pth")
             break
 
 print('Complete')
