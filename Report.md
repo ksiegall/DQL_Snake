@@ -19,6 +19,8 @@ The model was given: actions, the game board, (**ADD LATER**). The actions that 
 
 **Reward Change, Changed Snake Spawn Code**: Snake can now spawn in any orientation. Reward tweaked so snake is rewarded for staying alive, but the longer the game goes on the more it is penalized for taking awhile to find the apple.
 
+**Reward Change: higher reward for moving toward apple**: Reward snake for moving closer and closer to apple. No punishment for moving away (yet)
+
 
 
 ## Table of Results
@@ -28,7 +30,9 @@ The model was given: actions, the game board, (**ADD LATER**). The actions that 
 
 **Changed State Info**: Hey it kinda works. Snake sometimes wiggles in the corner in circles.
 
-**Reward, Snake Spawn Change**: currently broken, we're fixing this rn
+**Reward, Snake Spawn Change**: Works, but no huge improvements
+
+**Higher reward for moving toward apple**: Much better
 
 ## Conclusions
 
