@@ -63,35 +63,37 @@ class DQN(nn.Module):
         x = F.relu(self.layer3(x))
         return self.layer4(x)
     
+# BATCH_SIZE is the number of transitions sampled from the replay buffer
+# GAMMA is the discount factor as mentioned in the previous section
+# EPS_START is the starting value of epsilon
+# EPS_END is the final value of epsilon
+# EPS_DECAY controls the rate of exponential decay of epsilon, higher means a slower decay
+# TAU is the update rate of the target network
+# LR is the learning rate of the ``AdamW`` optimizer
+BATCH_SIZE = 256
+GAMMA = 0.99
+EPS_START = 0.95
+EPS_END = 0.05
+EPS_DECAY = 1000
+TAU = 0.005
+LR = 1e-3
+
+SNAKE_PIXEL_SIZE = 25
+SNAKE_GRID = (25, 25)
+snake = SnakeGame(SNAKE_GRID, cell_size_px=SNAKE_PIXEL_SIZE, display_game=False)
+# ----- DQN parameters -----
+n_actions = len(snake.index_move) # up, down, left, right
+n_observations = snake.get_state()[0].size
+
+policy_net = DQN(n_observations, n_actions).to(device)
+policy_net.load_state_dict(torch.load("checkpoints/dql_snake_post_supervision.pth"))
+target_net = DQN(n_observations, n_actions).to(device)
+target_net.load_state_dict(policy_net.state_dict())
+
+optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
+
 if __name__ == "__main__":
         
-    # BATCH_SIZE is the number of transitions sampled from the replay buffer
-    # GAMMA is the discount factor as mentioned in the previous section
-    # EPS_START is the starting value of epsilon
-    # EPS_END is the final value of epsilon
-    # EPS_DECAY controls the rate of exponential decay of epsilon, higher means a slower decay
-    # TAU is the update rate of the target network
-    # LR is the learning rate of the ``AdamW`` optimizer
-    BATCH_SIZE = 256
-    GAMMA = 0.99
-    EPS_START = 0.95
-    EPS_END = 0.05
-    EPS_DECAY = 1000
-    TAU = 0.005
-    LR = 1e-3
-
-    SNAKE_PIXEL_SIZE = 25
-    SNAKE_GRID = (25, 25)
-    snake = SnakeGame(SNAKE_GRID, cell_size_px=SNAKE_PIXEL_SIZE, display_game=False)
-    # ----- DQN parameters -----
-    n_actions = len(snake.index_move) # up, down, left, right
-    n_observations = snake.get_state()[0].size
-
-    policy_net = DQN(n_observations, n_actions).to(device)
-    target_net = DQN(n_observations, n_actions).to(device)
-    target_net.load_state_dict(policy_net.state_dict())
-
-    optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
     memory = ReplayMemory(10000)
 
     steps_done = 0
@@ -288,7 +290,7 @@ if __name__ == "__main__":
             memory.push(state, action, next_state, reward)
 
             # Move to the next state
-            state = next_state if next_state is not None else None
+            state = next_state
 
             # Perform one step of the optimization (on the policy network)
             optimize_model()
@@ -310,6 +312,7 @@ if __name__ == "__main__":
                 break
 
     print('Complete')
+    torch.save(policy_net.state_dict(), f"checkpoints/dql_snake_episode_{num_episodes}.pth")
     vis_thread_running = False
     plot_durations(show_result=True)
     plt.ioff()

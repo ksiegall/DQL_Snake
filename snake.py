@@ -303,7 +303,7 @@ class SnakeGame():
             reward += 10
 
         if not self.alive:
-            reward -= 25
+            reward -= 50
         
         # reward it a tiny bit for getting closer to the apple or not
         # it will be either +1, 0, or -1 in direction divided by distance (so the closer we are the more does this reward actually matter)
